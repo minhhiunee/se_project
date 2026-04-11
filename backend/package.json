@@ -4,11 +4,21 @@
   "description": "Basic ecommerce backend skeleton using Node.js and Express",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "prisma:generate": "node scripts/with-env.js npx prisma generate",
+    "prisma:migrate": "node scripts/with-env.js npx prisma migrate dev",
+    "prisma:studio": "node scripts/with-env.js npx prisma studio",
+    "db:list-users": "node scripts/listUsers.js"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
   }
 }

@@ -1,7 +1,9 @@
-const dotenv = require("dotenv");
-const app = require("./src/app");
+const { loadEnv, logDatabaseTarget } = require("./src/config/env");
 
-dotenv.config();
+loadEnv();
+logDatabaseTarget();
+
+const app = require("./src/app");
 
 const PORT = 5000;
 
