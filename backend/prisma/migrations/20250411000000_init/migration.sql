@@ -1,4 +1,5 @@
 -- CreateTable
+-- User table
 CREATE TABLE `User` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `email` VARCHAR(191) NOT NULL,
