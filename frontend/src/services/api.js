@@ -53,8 +53,36 @@ export function getProductsSortedByPrice(order) {
   });
 }
 
+export function filterProducts(min, max) {
+  return apiClient.get("/products/filter", {
+    params: { min, max }
+  });
+}
+
 export function getProductById(id) {
   return apiClient.get(`/products/${id}`);
+}
+
+export function searchProducts(q) {
+  return apiClient.get("/products/search", {
+    params: { q }
+  });
+}
+
+export function getProductReviews(productId) {
+  return apiClient.get(`/reviews/${productId}`);
+}
+
+export function createReview(body) {
+  return apiClient.post("/reviews", body);
+}
+
+export function checkoutOrder() {
+  return apiClient.post("/orders/checkout");
+}
+
+export function getMyOrders() {
+  return apiClient.get("/orders/my");
 }
 
 export function login(payload) {

@@ -48,3 +48,30 @@ exports.getProductById = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.searchProducts = async (req, res, next) => {
+  try {
+    const q = String(req.query.q ?? "").trim();
+    if (!q) {
+      const err = new Error('Query parameter "q" is required');
+      err.statusCode = 400;
+      throw err;
+    }
+    const products = await productService.searchProductsByName(q);
+    res.status(200).json(products);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.filterProductsByPrice = async (req, res, next) => {
+  try {
+    const products = await productService.filterProductsByPrice(
+      req.query.min,
+      req.query.max
+    );
+    res.status(200).json(products);
+  } catch (error) {
+    next(error);
+  }
+};

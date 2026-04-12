@@ -14,16 +14,34 @@ model User {
   name      String
   createdAt DateTime   @default(now())
   cartItems CartItem[]
+  orders    Order[]
+  reviews   Review[]
 }
 
 model Product {
-  id          Int        @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   name        String
   description String?
   price       Float
   imageUrl    String?
-  createdAt   DateTime   @default(now())
+  createdAt   DateTime    @default(now())
   cartItems   CartItem[]
+  orderItems  OrderItem[]
+  reviews     Review[]
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model CartItem {
@@ -36,4 +54,26 @@ model CartItem {
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+}
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  total     Float
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items OrderItem[]
+}
+
+model OrderItem {
+  id        Int @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+  price     Float
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
 }

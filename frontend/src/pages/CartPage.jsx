@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import CartItem from "../components/CartItem";
 import { useAuth } from "../context/AuthContext";
 import { getCart, removeCartItem } from "../services/api";
 
@@ -83,35 +84,22 @@ function CartPage() {
       ) : (
         <>
           <ul className="cart-list">
-            {items.map((item) => {
-              const line =
-                item.lineTotal ?? Number(item.price) * Number(item.quantity);
-              return (
-                <li key={item.id} className="cart-row card">
-                  <div className="cart-row__main">
-                    <span className="cart-row__name">{item.name}</span>
-                    <span className="cart-row__meta">
-                      ${Number(item.price).toFixed(2)} × {item.quantity}
-                    </span>
-                  </div>
-                  <div className="cart-row__side">
-                    <span className="cart-row__line">
-                      ${Number(line).toFixed(2)}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn-remove"
-                      onClick={() => handleRemove(item.id)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
+            {items.map((item) => (
+              <CartItem
+                key={item.id}
+                item={item}
+                showRemove
+                onRemove={handleRemove}
+              />
+            ))}
           </ul>
           <p className="cart-total">
             <strong>Total:</strong> ${grandTotal.toFixed(2)}
+          </p>
+          <p className="cart-checkout-cta">
+            <Link to="/checkout" className="btn btn-primary btn-inline">
+              Proceed to checkout
+            </Link>
           </p>
         </>
       )}

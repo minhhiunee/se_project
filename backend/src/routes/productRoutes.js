@@ -4,6 +4,8 @@ const productController = require("../controllers/productController");
 const router = express.Router();
 
 router.get("/sort/price", productController.getProductsSortedByPrice);
+router.get("/search", productController.searchProducts);
+router.get("/filter", productController.filterProductsByPrice);
 router.get("/", productController.getProducts);
 router.post("/", productController.createProduct);
 router.get("/:id", productController.getProductById);

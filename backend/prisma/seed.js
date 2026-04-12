@@ -99,7 +99,10 @@ const demoProducts = [
 ];
 
 async function main() {
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
   await prisma.cartItem.deleteMany();
+  await prisma.review.deleteMany();
   await prisma.product.deleteMany();
 
   await prisma.product.createMany({
@@ -108,6 +111,36 @@ async function main() {
 
   const count = await prisma.product.count();
   console.log(`Seeded ${count} products.`);
+
+  const demoUser = await prisma.user.findFirst({ orderBy: { id: "asc" } });
+  if (demoUser) {
+    const picks = await prisma.product.findMany({
+      take: 6,
+      orderBy: { id: "asc" },
+      select: { id: true }
+    });
+    const comments = [
+      "Exactly what I needed.",
+      "Solid quality for the price.",
+      "Fast shipping, happy with this.",
+      "Good value.",
+      "Works great!",
+      "Would buy again."
+    ];
+    for (let i = 0; i < picks.length; i += 1) {
+      await prisma.review.create({
+        data: {
+          userId: demoUser.id,
+          productId: picks[i].id,
+          rating: 3 + (i % 3),
+          comment: comments[i % comments.length]
+        }
+      });
+    }
+    console.log(`Seeded ${picks.length} demo reviews for user ${demoUser.email}.`);
+  } else {
+    console.log("No users in DB — skipped demo reviews (register a user, re-seed).");
+  }
 }
 
 main()

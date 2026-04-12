@@ -1,18 +1,18 @@
 const orderService = require("../services/orderService");
 
-exports.getOrders = async (req, res, next) => {
+exports.checkout = async (req, res, next) => {
   try {
-    const orders = await orderService.getOrders();
-    res.status(200).json(orders);
+    const result = await orderService.checkoutFromCart(req.user.id);
+    res.status(201).json(result);
   } catch (error) {
     next(error);
   }
 };
 
-exports.createOrder = async (req, res, next) => {
+exports.getMyOrders = async (req, res, next) => {
   try {
-    const order = await orderService.createOrder(req.body);
-    res.status(201).json(order);
+    const orders = await orderService.getOrdersForUser(req.user.id);
+    res.status(200).json(orders);
   } catch (error) {
     next(error);
   }
