@@ -1,96 +1,78 @@
+import axios from "axios";
+
 /**
  * In development, use relative `/api` so Create React App proxies to the backend
- * (see "proxy" in package.json). That avoids cross-origin "Failed to fetch" issues.
- * For production behind a separate API host, set REACT_APP_API_URL, e.g.
- * REACT_APP_API_URL=https://api.example.com/api
+ * (see "proxy" in package.json). Set REACT_APP_API_URL for a custom API base.
  */
-const BASE_URL = process.env.REACT_APP_API_URL || "/api";
+const apiClient = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || "/api",
+  headers: { "Content-Type": "application/json" }
+});
 
-function getStoredToken() {
+apiClient.interceptors.request.use((config) => {
   try {
-    return localStorage.getItem("token");
-  } catch {
-    return null;
-  }
-}
-
-async function request(endpoint, options = {}) {
-  const { auth = false, ...fetchOptions } = options;
-
-  const headers = {
-    "Content-Type": "application/json",
-    ...(fetchOptions.headers || {})
-  };
-
-  if (auth) {
-    const t = getStoredToken();
-    if (t) {
-      headers.Authorization = `Bearer ${t}`;
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+  } catch {
+    /* ignore */
   }
+  return config;
+});
 
-  let response;
-  try {
-    response = await fetch(`${BASE_URL}${endpoint}`, {
-      ...fetchOptions,
-      headers
-    });
-  } catch (err) {
+apiClient.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    if (!error.response) {
+      const message =
+        error.message === "Network Error"
+          ? "Cannot reach the server. Start the backend and open the app at http://localhost:3000."
+          : error.message || "Network error";
+      const wrapped = new Error(message);
+      wrapped.cause = error;
+      return Promise.reject(wrapped);
+    }
+    const data = error.response.data;
     const message =
-      err?.message === "Failed to fetch"
-        ? "Cannot reach the server. Start the backend (npm start in se_project/backend) and open the app at http://localhost:3000 — not as a file."
-        : err?.message || "Network error";
-    const wrapped = new Error(message);
-    wrapped.cause = err;
-    throw wrapped;
-  }
-
-  const contentType = response.headers.get("content-type");
-  const isJson = contentType && contentType.includes("application/json");
-  const data = isJson ? await response.json().catch(() => ({})) : {};
-
-  if (!response.ok) {
-    const message =
-      (typeof data.message === "string" && data.message) ||
-      `Request failed (${response.status})`;
+      (typeof data?.message === "string" && data.message) ||
+      `Request failed (${error.response.status})`;
     const err = new Error(message);
-    err.status = response.status;
-    throw err;
+    err.status = error.response.status;
+    return Promise.reject(err);
   }
-
-  return data;
-}
+);
 
 export function getProducts() {
-  return request("/products");
+  return apiClient.get("/products");
+}
+
+export function getProductsSortedByPrice(order) {
+  return apiClient.get("/products/sort/price", {
+    params: { order }
+  });
 }
 
 export function getProductById(id) {
-  return request(`/products/${id}`);
+  return apiClient.get(`/products/${id}`);
 }
 
 export function login(payload) {
-  return request("/auth/login", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+  return apiClient.post("/auth/login", payload);
 }
 
 export function register(payload) {
-  return request("/auth/register", {
-    method: "POST",
-    body: JSON.stringify(payload)
-  });
+  return apiClient.post("/auth/register", payload);
 }
 
 export function getCart() {
-  return request("/cart", { auth: true });
+  return apiClient.get("/cart");
 }
 
 export function addToCart(payload) {
-  return request("/cart", {
-    method: "POST",
-    body: JSON.stringify(payload),
-    auth: true
-  });
+  return apiClient.post("/cart/add", payload);
+}
+
+export function removeCartItem(cartItemId) {
+  return apiClient.delete(`/cart/remove/${cartItemId}`);
 }

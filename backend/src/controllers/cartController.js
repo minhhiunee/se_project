@@ -2,7 +2,7 @@ const cartService = require("../services/cartService");
 
 exports.getCart = async (req, res, next) => {
   try {
-    const cart = await cartService.getCart();
+    const cart = await cartService.getCartForUser(req.user.id);
     res.status(200).json(cart);
   } catch (error) {
     next(error);
@@ -11,8 +11,8 @@ exports.getCart = async (req, res, next) => {
 
 exports.addToCart = async (req, res, next) => {
   try {
-    const updatedCart = await cartService.addToCart(req.body);
-    res.status(201).json(updatedCart);
+    const cart = await cartService.addItem(req.user.id, req.body);
+    res.status(201).json(cart);
   } catch (error) {
     next(error);
   }
@@ -20,8 +20,8 @@ exports.addToCart = async (req, res, next) => {
 
 exports.removeFromCart = async (req, res, next) => {
   try {
-    const updatedCart = await cartService.removeFromCart(req.params.productId);
-    res.status(200).json(updatedCart);
+    const cart = await cartService.removeItem(req.user.id, req.params.id);
+    res.status(200).json(cart);
   } catch (error) {
     next(error);
   }

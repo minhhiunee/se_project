@@ -8,7 +8,11 @@
     "prisma:generate": "node scripts/with-env.js npx prisma generate",
     "prisma:migrate": "node scripts/with-env.js npx prisma migrate dev",
     "prisma:studio": "node scripts/with-env.js npx prisma studio",
+    "db:seed": "node scripts/with-env.js node prisma/seed.js",
     "db:list-users": "node scripts/listUsers.js"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
