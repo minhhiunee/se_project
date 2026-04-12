@@ -6,7 +6,7 @@ Backend path: `backend`
 
 ### Folder structure
 
-```text
+
 backend
  ├ src
  │ ├ controllers
