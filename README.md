@@ -1,13 +1,13 @@
 # se_project — Ứng dụng thương mại điện tử (full-stack)
 
-Dự án gồm **backend REST API** (Node.js + Express + Prisma + MySQL) và **frontend** (React), hỗ trợ đăng ký/đăng nhập, xem sản phẩm, sắp xếp theo giá và quản lý giỏ hàng theo từng người dùng.
+Dự án gồm **backend REST API** (Node.js + Express + Prisma + MySQL) và **frontend** (React), hỗ trợ đăng ký/đăng nhập, xem sản phẩm, **tìm kiếm và lọc theo khoảng giá**, **đánh giá sản phẩm**, giỏ hàng theo từng người dùng, **checkout tạo đơn hàng** và **xem lịch sử đơn** (lưu MySQL).
 
 ## Công nghệ
 
 | Thành phần | Công nghệ |
 |------------|-----------|
 | Backend | Node.js, Express, Prisma ORM, MySQL |
-| Xác thực | JWT (`jsonwebtoken`), bcrypt (chỉ luồng `/api/auth`) |
+| Xác thực | JWT (`jsonwebtoken`), bcrypt (luồng `/api/auth` và các route cần `authenticate`) |
 | Frontend | React 18, React Router 6, Axios, Create React App |
 
 ## Cấu trúc thư mục
@@ -17,14 +17,14 @@ se_project/
 ├── backend/                 # API, cổng mặc định 5000
 │   ├── server.js            # Khởi động server, load env
 │   ├── prisma/
-│   │   ├── schema.prisma    # User, Product, CartItem
-│   │   ├── seed.js          # Dữ liệu sản phẩm mẫu
+│   │   ├── schema.prisma    # User, Product, Review, CartItem, Order, OrderItem
+│   │   ├── seed.js          # Sản phẩm mẫu + (tùy chọn) review demo cho user đầu tiên
 │   │   └── migrations/
 │   └── src/
 │       ├── app.js           # Express app, mount routes
-│       ├── config/          # env, (db placeholder legacy)
+│       ├── config/          # env
 │       ├── controllers/
-│       ├── routes/
+│       ├── routes/          # auth, users, products, cart, orders, reviews
 │       ├── services/        # Logic nghiệp vụ + Prisma
 │       ├── middleware/      # errorHandler
 │       ├── middlewares/     # JWT authenticate
@@ -32,7 +32,7 @@ se_project/
 ├── frontend/                # CRA, cổng mặc định 3000
 │   └── src/
 │       ├── pages/
-│       ├── components/
+│       ├── components/      # SearchBar, PriceFilter, ReviewForm, ReviewList, StarRating, ...
 │       ├── context/         # AuthContext
 │       ├── routes/
 │       └── services/        # api.js (Axios + Bearer token)
@@ -42,11 +42,19 @@ se_project/
 
 ## Mô hình dữ liệu (Prisma)
 
-- **User** — email (unique), password (hash khi tạo qua `/api/auth/register`), tên, quan hệ tới giỏ.
-- **Product** — tên, mô tả, giá, `imageUrl`.
+- **User** — email (unique), password (hash khi tạo qua `/api/auth/register`), tên, quan hệ tới giỏ, đơn hàng và đánh giá.
+- **Product** — tên, mô tả, giá, `imageUrl`; quan hệ tới giỏ, dòng đơn và review.
+- **Review** — `userId`, `productId`, `rating` (1–5), `comment` (tùy chọn); cascade khi xóa user/product.
 - **CartItem** — `userId` + `productId` (unique), `quantity`; xóa user/product cascade.
+- **Order** — `userId`, `total`, `status` (mặc định `pending`), thời gian tạo; quan hệ `OrderItem`.
+- **OrderItem** — thuộc một đơn, `productId`, `quantity`, `price` (snapshot giá lúc checkout).
 
-**Lưu ý:** Không có bảng **Order** trong schema. API `/api/orders` hiện dùng **dữ liệu giả trong bộ nhớ** (mock), không lưu MySQL.
+**Ghi chú:** Trong `src/models/` có file `OrderModel.js` rỗng (legacy), **không** dùng trong luồng đơn hàng hiện tại — đơn dùng Prisma (`orderService`).
+
+## Seed (`prisma/seed.js`)
+
+- Xóa và tạo lại bộ sản phẩm demo (nhiều mặt hàng).
+- Nếu đã có ít nhất một user trong DB, seed thêm vài **review** demo gắn với user đầu tiên; nếu chưa có user thì bỏ qua bước này (đăng ký user rồi chạy lại seed nếu cần).
 
 ## Yêu cầu môi trường
 
@@ -83,7 +91,7 @@ npm start
 ```
 
 - Server: `http://localhost:5000`
-- Kiểm tra API + DB: `GET http://localhost:5000/api/health` (trả `ok: true` khi MySQL kết nối được).
+- Kiểm tra API + DB: `GET http://localhost:5000/api/health` (trả `ok: true` và `database: "connected"` khi MySQL kết nối được).
 
 **Script hữu ích** (xem `package.json`):
 
@@ -135,9 +143,13 @@ npm start
 
 ### Sản phẩm — `/api/products` (dữ liệu thật, MySQL)
 
+Nhiều endpoint trả object sản phẩm kèm **`averageRating`** và **`reviewCount`** (tính từ bảng Review).
+
 | Phương thức | Đường dẫn | Mô tả |
 |-------------|-----------|--------|
 | GET | `/api/products/sort/price` | Sắp xếp theo giá; query `order=asc` hoặc `order=desc` |
+| GET | `/api/products/search` | Tìm theo tên; query bắt buộc `q` |
+| GET | `/api/products/filter` | Lọc theo khoảng giá; query `min`, `max` (số, `min` ≤ `max`, không âm) |
 | GET | `/api/products` | Danh sách sản phẩm |
 | POST | `/api/products` | Tạo sản phẩm (`name`, `price`, tùy chọn `description`, `imageUrl`) |
 | GET | `/api/products/:id` | Chi tiết theo id |
@@ -152,27 +164,37 @@ npm start
 | POST | `/api/cart/add` | Thêm/cộng dồn; body: `productId`, tùy chọn `quantity` |
 | DELETE | `/api/cart/remove/:id` | Xóa dòng giỏ theo **id của CartItem** (không phải `productId`) |
 
-### Đơn hàng — `/api/orders` (**mock trong RAM**)
+### Đơn hàng — `/api/orders` (dữ liệu thật, MySQL)
+
+**Bắt buộc header:** `Authorization: Bearer <token>`.
 
 | Phương thức | Đường dẫn | Mô tả |
 |-------------|-----------|--------|
-| GET | `/api/orders` | Trả danh sách đơn giả |
-| POST | `/api/orders` | Thêm đơn vào mảng trong bộ nhớ; **không** persist DB |
+| POST | `/api/orders/checkout` | Tạo đơn từ toàn bộ giỏ: tính `total`, lưu `Order` + `OrderItem` (giá từng dòng snapshot), **xóa giỏ** sau khi thành công; lỗi 400 nếu giỏ rỗng |
+| GET | `/api/orders/my` | Danh sách đơn của user (kèm `items` và thông tin `product`) |
+
+### Đánh giá — `/api/reviews` (dữ liệu thật, MySQL)
+
+| Phương thức | Đường dẫn | Mô tả |
+|-------------|-----------|--------|
+| GET | `/api/reviews/:productId` | Danh sách review của sản phẩm + `averageRating` tổng hợp; không cần JWT |
+| POST | `/api/reviews` | Tạo review; **JWT**; body: `productId`, `rating` (1–5), tùy chọn `comment` |
 
 ## Frontend — trang và luồng
 
 - `/` — Trang chủ  
-- `/products` — Danh sách + sắp xếp giá  
-- `/products/:id` — Chi tiết  
+- `/products` — Danh sách; **tìm kiếm**, **lọc khoảng giá**, sắp xếp theo giá  
+- `/product/:id` — Chi tiết; **danh sách đánh giá** và form gửi review (khi đã đăng nhập)  
 - `/cart` — Giỏ (cần đăng nhập để API hoạt động)  
+- `/checkout` — Đặt hàng từ giỏ (cần đăng nhập)  
+- `/orders` — Lịch sử đơn của user (cần đăng nhập)  
 - `/login`, `/register` — Auth; token lưu `localStorage`, Axios gửi kèm mọi request tới `/api`.
 
 ## Trạng thái triển khai (đúng với code hiện tại)
 
-- **Đã tích hợp MySQL + Prisma:** đăng ký/đăng nhập (bcrypt + JWT), sản phẩm, giỏ hàng, CRUD user qua `/api/users`.
-- **Chưa tích hợp DB:** đơn hàng (`orderService` mock); `OrderModel` là placeholder.
-- README trước đây mô tả “toàn mock” — **không còn đúng**; phần lớn nghiệp vụ chính đã dùng CSDL.
+- **Đã tích hợp MySQL + Prisma:** auth (bcrypt + JWT), users, sản phẩm (kèm aggregate rating), tìm kiếm/lọc giá, giỏ hàng, **đơn hàng (checkout + danh sách)**, **review**.
+- README trước đây mô tả đơn hàng là mock trong RAM — **không còn đúng**; đơn và review đều persist qua Prisma.
 
 ---
 
-Nếu cần mở rộng: thêm model Order + migration, bảo vệ `/api/users`, và thống nhất một luồng tạo user (chỉ hash qua auth hoặc service dùng chung).
+Nếu cần mở rộng: bảo vệ `/api/users`, thống nhất một luồng tạo user (chỉ hash qua auth hoặc service dùng chung), và dọn file legacy `OrderModel.js` nếu không còn dùng.
